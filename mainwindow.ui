@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="MainWidget" name="centralWidget"/>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>400</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_File">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <addaction name="actionNew"/>
+    <addaction name="actionOpen"/>
+    <addaction name="actionShare"/>
+    <addaction name="actionDownload"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuBook">
+    <property name="title">
+     <string>Book</string>
+    </property>
+    <addaction name="actionAddBook"/>
+    <addaction name="actionDeleteBook"/>
+    <addaction name="actionOpenBook"/>
+    <addaction name="actionDeletePage"/>
+    <addaction name="actionAddImage"/>
+    <addaction name="actionAddFolder"/>
+    <addaction name="actionExportPdf"/>
+    <addaction name="actionExportImageSequence"/>
+    <addaction name="actionExportPage"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>&amp;View</string>
+    </property>
+    <addaction name="actionPrevPage"/>
+    <addaction name="actionNextPage"/>
+    <addaction name="actionFirstPage"/>
+    <addaction name="actionLastPage"/>
+    <addaction name="actionFitWidth"/>
+    <addaction name="actionFitHeight"/>
+    <addaction name="actionBestFit"/>
+    <addaction name="actionNoStretch"/>
+   </widget>
+   <widget class="QMenu" name="menu_Edit">
+    <property name="title">
+     <string>&amp;Edit</string>
+    </property>
+    <addaction name="actionCopyImage"/>
+   </widget>
+   <addaction name="menu_File"/>
+   <addaction name="menuBook"/>
+   <addaction name="menuView"/>
+   <addaction name="menu_Edit"/>
+  </widget>
+  <action name="actionOpen">
+   <property name="text">
+    <string>&amp;Open</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>E&amp;xit</string>
+   </property>
+  </action>
+  <action name="actionNew">
+   <property name="text">
+    <string>&amp;New</string>
+   </property>
+  </action>
+  <action name="actionAddBook">
+   <property name="text">
+    <string>Add Book</string>
+   </property>
+  </action>
+  <action name="actionDeleteBook">
+   <property name="text">
+    <string>Delete Book</string>
+   </property>
+  </action>
+  <action name="actionOpenBook">
+   <property name="text">
+    <string>Open Book</string>
+   </property>
+  </action>
+  <action name="actionAddImage">
+   <property name="text">
+    <string>Add Image</string>
+   </property>
+  </action>
+  <action name="actionPrevPage">
+   <property name="text">
+    <string>Prev Page</string>
+   </property>
+   <property name="shortcut">
+    <string>F</string>
+   </property>
+  </action>
+  <action name="actionNextPage">
+   <property name="text">
+    <string>Next Page</string>
+   </property>
+   <property name="shortcut">
+    <string>G</string>
+   </property>
+  </action>
+  <action name="actionFirstPage">
+   <property name="text">
+    <string>First Page</string>
+   </property>
+   <property name="toolTip">
+    <string>First Page</string>
+   </property>
+   <property name="shortcut">
+    <string>A</string>
+   </property>
+  </action>
+  <action name="actionLastPage">
+   <property name="text">
+    <string>Last Page</string>
+   </property>
+   <property name="shortcut">
+    <string>S</string>
+   </property>
+  </action>
+  <action name="actionAddFolder">
+   <property name="text">
+    <string>Add Folder</string>
+   </property>
+  </action>
+  <action name="actionFitWidth">
+   <property name="text">
+    <string>Fit Width</string>
+   </property>
+  </action>
+  <action name="actionFitHeight">
+   <property name="text">
+    <string>Fit Height</string>
+   </property>
+  </action>
+  <action name="actionBestFit">
+   <property name="text">
+    <string>Best Fit</string>
+   </property>
+  </action>
+  <action name="actionNoStretch">
+   <property name="text">
+    <string>No Stretch</string>
+   </property>
+  </action>
+  <action name="actionShare">
+   <property name="text">
+    <string>Share</string>
+   </property>
+  </action>
+  <action name="actionDownload">
+   <property name="text">
+    <string>Download</string>
+   </property>
+  </action>
+  <action name="actionDeletePage">
+   <property name="text">
+    <string>Delete Page</string>
+   </property>
+   <property name="shortcut">
+    <string>Del</string>
+   </property>
+  </action>
+  <action name="actionExportPdf">
+   <property name="text">
+    <string>Export Pdf</string>
+   </property>
+  </action>
+  <action name="actionExportImageSequence">
+   <property name="text">
+    <string>Export Image Sequence</string>
+   </property>
+  </action>
+  <action name="actionCopyImage">
+   <property name="text">
+    <string>Copy Image</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+C</string>
+   </property>
+  </action>
+  <action name="actionExportPage">
+   <property name="text">
+    <string>Export Page</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>MainWidget</class>
+   <extends>QWidget</extends>
+   <header>mainwidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,23 @@
+<RCC>
+    <qresource prefix="/">
+        <file>doc.sql</file>
+        <file>font/arial.ttf</file>
+        <file>shader/alphaToMask.fs</file>
+        <file>shader/alphaToMask.vs</file>
+        <file>shader/combineColorAlpha.fs</file>
+        <file>shader/combineColorAlpha.vs</file>
+        <file>shader/expand.fs</file>
+        <file>shader/expand.vs</file>
+        <file>shader/fxaa3.fs</file>
+        <file>shader/fxaa3.vs</file>
+        <file>shader/smaaBlendingWeightCalculation.fs</file>
+        <file>shader/smaaBlendingWeightCalculation.vs</file>
+        <file>shader/smaaEdgeDetection.fs</file>
+        <file>shader/smaaEdgeDetection.vs</file>
+        <file>shader/smaaNeighborhoodBlending.fs</file>
+        <file>shader/smaaNeighborhoodBlending.vs</file>
+        <file>shader/smaaTexArea.png</file>
+        <file>shader/smaaTexSearch.png</file>
+        <file>app.sql</file>
+    </qresource>
+</RCC>
