@@ -12,11 +12,12 @@ public:
     Archive(const QString& path);
     ~Archive();
     static Archive* GetInstance() { return sInstance; }
-    SqliteContext* GetContext() { return mContext; }
+    SqliteContext* GetContext(bool forceNewInstance = false);
 
 private:
     SqliteContext* mContext;
     static Archive* sInstance;
+    std::string mPath;
 };
 
 class Image
@@ -24,6 +25,7 @@ class Image
 public:
     Image(int id);
     Image(const QString& path);
+    Image();
     ~Image();
 
     int GetId() { return mId; }
@@ -37,6 +39,8 @@ public:
 	int GetFrameDelay(int frameIndex);
     int GetAccessTime() const { return mAccessTime; }
     void UpdateAccessTime();
+    void Load(const QString& path);
+    void Sync();
     void Save(const QString& path);
 
 private:
@@ -48,6 +52,9 @@ private:
     int mFrames;
     unsigned char* mData;
     int mAccessTime;
+
+    unsigned char* mEncodeBuf = nullptr;
+    int mEncodeLength = 0;
 };
 
 class Book
@@ -59,6 +66,7 @@ public:
     int GetId() const { return mId; }
     const QString& GetName() const { return mName; }
     int AddPage(const QString& imagePath);
+    void AddPageList(const std::vector<std::string>& imagePaths);
     void DeletePage(int pageId);
     const QList<int>& GetImages() { return mImageIds; }
     int GetCurrentImage();

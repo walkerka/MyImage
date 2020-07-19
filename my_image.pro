@@ -49,4 +49,7 @@ DEFINES += USE_OPENGL3 _USE_MATH_DEFINES
 LIBS += -lglu32 -lopengl32
 }
 
-DISTFILES +=
+android {
+QMAKE_LINK += -nostdlib++
+}
+

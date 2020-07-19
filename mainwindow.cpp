@@ -63,19 +63,29 @@ void ImageLoader::onLoad()
     int n = mPendingImages.size();
     mLock.unlock();
 
-    while (n > 0)
+    if (n > 0)
     {
-        mLock.lock();
-        int id = mPendingImages.front();
-        mPendingImages.pop_front();
-        mLock.unlock();
-        
-        Image* img = new Image(id);
-        qDebug() << "load image" << img->GetName();
-        emit imageLoaded(img);
+        QList<int> ids;
 
         mLock.lock();
-        n = mPendingImages.size();
+//        int id = mPendingImages.front();
+//        mPendingImages.pop_front();
+        ids = mPendingImages;
+        mLock.unlock();
+        
+        std::vector<std::future<void>> tasks;
+        for (int id: ids)
+        {
+            tasks.emplace_back(std::async(std::launch::async, [id,this](){
+                Image* img = new Image(id);
+                qDebug() << "load image" << img->GetName();
+                emit imageLoaded(img);
+            }));
+        }
+
+        mLock.lock();
+//        n = mPendingImages.size();
+        mPendingImages.clear();
         mLock.unlock();
     }
 }
@@ -99,7 +109,14 @@ MainWindow::MainWindow(QWidget *parent) :
     mApp = new AppContext();
 
     mBooksView = new BookListDialog();
-    mBooksView->setVisible(false);
+//    mBooksView->setVisible(false);
+
+    mImageView = new MainWidget();
+
+    QSplitter* sp = new QSplitter(Qt::Horizontal);
+    sp->addWidget(mBooksView);
+    sp->addWidget(mImageView);
+    setCentralWidget(sp);
 
     mClientView = new Client();
     mClientView->setVisible(false);
@@ -134,10 +151,10 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionBestFit, SIGNAL(triggered(bool)), this, SLOT(setStretchBestFit()));
     connect(ui->actionNoStretch, SIGNAL(triggered(bool)), this, SLOT(setStretchNone()));
     connect(ui->actionCopyImage, SIGNAL(triggered(bool)), this, SLOT(copyImage()));
-    connect(ui->centralWidget, SIGNAL(wheelUp()), this, SLOT(prevPage()));
-    connect(ui->centralWidget, SIGNAL(wheelDown()), this, SLOT(nextPage()));
-    connect(ui->centralWidget, SIGNAL(tap(QPointF)), this, SLOT(onTap(QPointF)));
-    connect(ui->centralWidget, SIGNAL(doubleTap(QPointF)), this, SLOT(onDoubleTap(QPointF)));
+    connect(mImageView, SIGNAL(wheelUp()), this, SLOT(prevPage()));
+    connect(mImageView, SIGNAL(wheelDown()), this, SLOT(nextPage()));
+    connect(mImageView, SIGNAL(tap(QPointF)), this, SLOT(onTap(QPointF)));
+    connect(mImageView, SIGNAL(doubleTap(QPointF)), this, SLOT(onDoubleTap(QPointF)));
     setAcceptDrops(true);
 
     QSettings s("w", "my_image");
@@ -422,13 +439,13 @@ void MainWindow::loadPage()
         {
             Image& image = *mImages[imgId];
             image.UpdateAccessTime();
-            ui->centralWidget->BeginLoad();
+            mImageView->BeginLoad();
             for (int i = 0; i < image.GetNumFrames(); ++i)
             {
-                ui->centralWidget->Load(image.GetWidth(), image.GetHeight(), image.GetPixelSize(), image.GetFrameData(i), i, image.GetFrameDelay(i));
+                mImageView->Load(image.GetWidth(), image.GetHeight(), image.GetPixelSize(), image.GetFrameData(i), i, image.GetFrameDelay(i));
             }
 
-            ui->centralWidget->EndLoad();
+            mImageView->EndLoad();
             resetTransform();
             setWindowTitle(image.GetName());
 
@@ -441,27 +458,33 @@ void MainWindow::loadPage()
     }
     else
     {
-        ui->centralWidget->BeginLoad();
-        ui->centralWidget->EndLoad();
+        mImageView->BeginLoad();
+        mImageView->EndLoad();
     }
 }
 
 void MainWindow::prefetch()
 {
-    int from = mBook->GetCurrentPage() + 1;
-    int to = from + mCacheSize / 2;
-    if (from < 0)
-    {
-        from = 0;
-    }
-    if (to >= mBook->GetImages().size())
-    {
-        to = mBook->GetImages().size() - 1;
-    }
     QList<int> ids;
-    for (int i = from; i <= to; ++i)
+    for (int idx = 1; idx <= mCacheSize; ++idx)
     {
-        if (i == mBook->GetCurrentPage())
+        int i = mBook->GetCurrentPage() + idx;
+        if (i >= mBook->GetImages().size())
+        {
+            continue;
+        }
+        int id = mBook->GetImages()[i];
+        if (mImages.find(id) != mImages.end() || mPendingImages.contains(id))
+        {
+            continue;
+        }
+        ids.push_back(id);
+        mPendingImages.insert(id);
+    }
+    for (int idx = 1; idx <= mCacheSize; ++idx)
+    {
+        int i = mBook->GetCurrentPage() - idx;
+        if (i < 0)
         {
             continue;
         }
@@ -542,26 +565,32 @@ void MainWindow::lastPage()
 
 void MainWindow::onTap(QPointF p)
 {
-    if (p.x() > ui->centralWidget->width() * devicePixelRatio() * 0.75f)
+    if (p.x() > mImageView->width() * devicePixelRatio() * 0.75f)
     {
         modPage(1);
     }
-    else if (p.x() < ui->centralWidget->width() * devicePixelRatio() * 0.25f)
+    else if (p.x() < mImageView->width() * devicePixelRatio() * 0.25f)
     {
         modPage(-1);
     }
     else
     {
-        ui->centralWidget->PlayOrStop();
+        mImageView->PlayOrStop();
     }
 }
 
 void MainWindow::onDoubleTap(QPointF p)
 {
-    mBooksView->open();
+    if (p.y() < height()/2)
+    {
+        openArchive();
+    }
+    else {
+        mBooksView->open();
+    }
 }
 
-static void findImages(const QString& root, QStringList& imagePaths)
+static void findImages(const QString& root, std::vector<std::string>& imagePaths)
 {
     QDir dir(root);
     QFileInfoList fi = dir.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
@@ -576,7 +605,7 @@ static void findImages(const QString& root, QStringList& imagePaths)
             QString s = f.suffix().toLower();
             if (s == "png" || s == "jpg" || s == "jpeg" || s == "bmp" || s == "gif" || s == "tga")
             {
-                imagePaths.push_back(f.absoluteFilePath());
+                imagePaths.push_back(f.absoluteFilePath().toStdString());
             }
         }
     }
@@ -607,12 +636,9 @@ void MainWindow::addZip(const QString& path)
 
 void MainWindow::addDir(const QString& path)
 {
-    QStringList files;
+    std::vector<std::string> files;
     findImages(path, files);
-    foreach (QString f, files)
-    {
-        mBook->AddPage(f);
-    }
+    mBook->AddPageList(files);
 }
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *e)
@@ -680,8 +706,8 @@ void MainWindow::resetTransform()
     Image* img = mImages[mBook->GetCurrentImage()];
     int w = img->GetWidth();
     int h = img->GetHeight();
-    float sw = ui->centralWidget->width() * devicePixelRatio();
-    float sh = ui->centralWidget->height() * devicePixelRatio();
+    float sw = mImageView->width() * devicePixelRatio();
+    float sh = mImageView->height() * devicePixelRatio();
     Transform2 tran;
     switch (mStretchMode) {
     case StretchModeFitWidth:
@@ -693,7 +719,7 @@ void MainWindow::resetTransform()
         tran.SetTranslate(0, 0);
         break;
     case StretchModeBestFit:
-        if (sw/w > sh/h)
+        if (sh/h * w > sw)
         {
             float scale = sw/w;
             tran.SetScale(scale, scale);
@@ -711,7 +737,7 @@ void MainWindow::resetTransform()
         tran.SetTranslate(0, sh - h);
         break;
     }
-    ui->centralWidget->SetTransform(tran);
+    mImageView->SetTransform(tran);
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)
@@ -762,7 +788,7 @@ void MainWindow::copyImage()
         return;
     }
     Image* img = mImages[id];
-    int frameIndex = ui->centralWidget->GetFrameIndex();
+    int frameIndex = mImageView->GetFrameIndex();
     unsigned char* data = img->GetFrameData(frameIndex);
     QImage::Format format;
     switch(img->GetPixelSize())

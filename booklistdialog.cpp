@@ -60,7 +60,7 @@ BookListDialog::BookListDialog(QWidget *parent) :
     connect(mOpenButton, SIGNAL(clicked(bool)), this, SLOT(onBookOpen()));
     connect(mAddButton, SIGNAL(clicked(bool)), this, SLOT(onBookAdd()));
     connect(mDeleteButton, SIGNAL(clicked(bool)), this, SLOT(deleteBooks()));
-    connect(mCancelButton, SIGNAL(clicked(bool)), this, SLOT(hide()));
+//    connect(mCancelButton, SIGNAL(clicked(bool)), this, SLOT(hide()));
 }
 
 BookListDialog::~BookListDialog()
@@ -101,7 +101,7 @@ void BookListDialog::onBookOpen()
     {
         int id = items.first()->data(Qt::UserRole).toInt();
         emit openBook(id);
-        hide();
+//        hide();
     }
 }
 
@@ -192,7 +192,7 @@ void BookListDialog::onBookDoubleClick(QListWidgetItem* current)
         int id = current->data(Qt::UserRole).toInt();
         mId = id;
         emit openBook(id);
-        hide();
+//        hide();
     }
 }
 

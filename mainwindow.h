@@ -16,6 +16,7 @@ class Archive;
 class Book;
 class Image;
 class BookListDialog;
+class MainWidget;
 class Server;
 class Client;
 
@@ -110,6 +111,7 @@ private:
     BookListDialog* mBooksView;
     Server* mServerView;
     Client* mClientView;
+    MainWidget* mImageView;
 };
 
 #endif // MAINWINDOW_H

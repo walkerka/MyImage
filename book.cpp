@@ -11,6 +11,7 @@
 #include <QPdfWriter>
 #include <QPainter>
 #include "glrenderer.h"
+#include <future>
 
 inline SqliteContext* context()
 {
@@ -20,6 +21,7 @@ inline SqliteContext* context()
 Archive* Archive::sInstance = NULL;
 
 Archive::Archive(const QString& path)
+    :mPath(path.toStdString())
 {
     mContext = new SqliteContext();
     if (!mContext->Open(path.toStdString().c_str()))
@@ -35,6 +37,21 @@ Archive::~Archive()
 {
     delete mContext;
     sInstance = NULL;
+}
+
+SqliteContext* Archive::GetContext(bool forceNewInstance)
+{
+    if (forceNewInstance)
+    {
+        auto context = new SqliteContext();
+        if (!context->Open(mPath.c_str()))
+        {
+            delete context;
+            context = NULL;
+        }
+        return context;
+    }
+    return mContext;
 }
 
 Image::Image(int id)
@@ -112,17 +129,37 @@ Image::Image(const QString& path)
         {
             mName.append(".gif");
         }
-        context()->BeginTransaction();
+
+        auto context = Archive::GetInstance()->GetContext();
+
+        context->BeginTransaction();
         SqliteParams ps;
         ps.AddInt(mWidth);
         ps.AddInt(mHeight);
         ps.AddString(mName.toStdString());
         ps.AddBlob(buf, len);
-        context()->ExecuteWithParams("insert into image (width,height,name,imageData) values (?,?,?,?)", ps);
-        mId = context()->QueryInt("select last_insert_rowid();");
-        context()->CommitTransaction();
+        context->ExecuteWithParams("insert into image (width,height,name,imageData) values (?,?,?,?)", ps);
+        mId = context->QueryInt("select last_insert_rowid();");
+        context->CommitTransaction();
         delete[] buf;
     }
+}
+
+Image::Image()
+    :mId(0)
+    ,mWidth(0)
+    ,mHeight(0)
+    ,mAccessTime(QTime::currentTime().msecsSinceStartOfDay())
+{
+    auto context = Archive::GetInstance()->GetContext();
+
+    SqliteParams ps;
+    ps.AddInt(mWidth);
+    ps.AddInt(mHeight);
+    ps.AddString("");
+
+    context->ExecuteWithParams("insert into image (width,height,name) values (?,?,?)", ps);
+    mId = context->QueryInt("select last_insert_rowid();");
 }
 
 Image::~Image()
@@ -150,6 +187,63 @@ int Image::GetFrameDelay(int frameIndex)
 void Image::UpdateAccessTime()
 {
     mAccessTime = QTime::currentTime().msecsSinceStartOfDay();
+}
+
+void Image::Load(const QString& path)
+{
+    mAccessTime = QTime::currentTime().msecsSinceStartOfDay();
+    QFileInfo fi(path);
+    unsigned char* buf = NULL;
+    int len = 0;
+    QString suffix = fi.suffix().toLower();
+    if (suffix == "gif" || IsGif(path.toStdString().c_str()))
+    {
+        mData = LoadAnim(path.toStdString().c_str(), mWidth, mHeight, mPixelSize, mFrames);
+        buf = (unsigned char*)LoadFile(path.toStdString().c_str(), len);
+    }
+    else
+    {
+        mData = LoadImg(path.toStdString().c_str(), mWidth, mHeight, mPixelSize);
+        if (mData)
+        {
+            mFrames = 1;
+        }
+        if (suffix == "jpeg" || suffix == "jpg" || suffix == "png")
+        {
+            buf = (unsigned char*)LoadFile(path.toStdString().c_str(), len);
+        }
+        else
+        {
+            buf = SaveImgToMemory(mWidth, mHeight, mPixelSize, mData, len);
+        }
+    }
+    mName = fi.fileName();
+    if (mFrames > 1 && fi.suffix().toLower() != "gif")
+    {
+        mName.append(".gif");
+    }
+
+    mEncodeBuf = buf;
+    mEncodeLength = len;
+}
+
+void Image::Sync()
+{
+    if (mData)
+    {
+        auto context = Archive::GetInstance()->GetContext();
+
+        SqliteParams ps;
+        ps.AddInt(mWidth);
+        ps.AddInt(mHeight);
+        ps.AddString(mName.toStdString());
+        ps.AddBlob(mEncodeBuf, mEncodeLength);
+        ps.AddInt(mId);
+        context->ExecuteWithParams("update image set width=?,height=?,name=?,imageData=? where id=?", ps);
+        delete[] mEncodeBuf;
+        mEncodeBuf = nullptr;
+        mEncodeLength = 0;
+    }
 }
 
 void Image::Save(const QString& path)
@@ -197,6 +291,51 @@ int Book::AddPage(const QString& imagePath)
         mImageIds.push_back(imgId);
     }
     return imgId;
+}
+
+void Book::AddPageList(const std::vector<std::string>& imagePaths)
+{
+    auto ctx = context();
+    ctx->BeginTransaction();
+    std::vector<std::future<Image*>> tasks;
+    for (auto& path: imagePaths)
+    {
+        Image* img = new Image();
+        int imgId = img->GetId();
+        if (imgId != 0)
+        {
+            SqliteParams ps;
+            ps.AddInt(mId);
+            ps.AddInt(imgId);
+            int pageId = mImageIds.size();
+            ps.AddInt(pageId);
+            ctx->ExecuteWithParams("insert into bookPage (bookId,imageId,pageId) values (?,?,?)", ps);
+            mImageIds.push_back(imgId);
+            qDebug() << "page: " << pageId << "," << img->GetName();
+
+            tasks.emplace_back(std::async(std::launch::async, [img,path](){
+                img->Load(path.c_str());
+                return img;
+            }));
+        }
+        else {
+            qDebug() << "page: lost " << img->GetName();
+        }
+    }
+
+    std::vector<Image*> imgs;
+    for (auto& t: tasks)
+    {
+        auto img = t.get();
+        img->Sync();
+        imgs.push_back(img);
+    }
+
+    for(Image* img: imgs)
+    {
+        delete img;
+    }
+    ctx->CommitTransaction();
 }
 
 void Book::DeletePage(int pageId)
